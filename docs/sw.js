@@ -1,5 +1,5 @@
 // Kitaplık service worker: uygulama kabuğunu önbelleğe alır, çevrimdışı açılmayı sağlar.
-const VERSION = '20261016222958';
+const VERSION = '20261016224021';
 const SHELL = `kitaplik-shell-${VERSION}`;
 const RUNTIME = 'kitaplik-runtime-v1';
 const SHELL_FILES = [

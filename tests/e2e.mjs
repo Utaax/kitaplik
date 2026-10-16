@@ -3,6 +3,8 @@
 import { createRequire } from 'node:module';
 import { spawn } from 'node:child_process';
 import { mkdirSync } from 'node:fs';
+// Service worker'ın yaptığı istekler de sahte yanıtlarla karşılanabilsin
+process.env.PW_EXPERIMENTAL_SERVICE_WORKER_NETWORK_EVENTS = '1';
 const require = createRequire('/opt/npm-tools/node_modules/');
 const { chromium } = require('playwright');
 
@@ -52,7 +54,7 @@ await ctx.route(/googleapis\.com\/books/, (route) => {
     items = [gbItem(BOOK), gbItem({ ...BOOK, title: 'Masumiyet Müzesi', isbn: '9789750500169' }), gbItem({ ...BOOK, title: 'Benim Adım Kırmızı', isbn: '9789750500176' })];
   else if (/inpublisher:"İletişim Yayınları"/.test(u))
     items = [gbItem({ ...BOOK, title: 'Az Popüler', isbn: '9789750500183', rc: 1 }), gbItem({ ...BOOK, title: 'Çok Popüler', isbn: '9789750500190', rc: 90 })];
-  else if (/Sefiller/.test(u)) items = [gbItem({ title: 'Sefiller', author: 'Victor Hugo', publisher: 'Can Yayınları', date: '2010', pages: 1200, isbn: '9789750719387' })];
+  else if (/sefiller/i.test(u)) items = [gbItem({ title: 'Sefiller', author: 'Victor Hugo', publisher: 'Can Yayınları', date: '2010', pages: 1200, isbn: '9789750719387' })];
   route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ items }) });
 });
 await ctx.route(/wikipedia\.org/, (route) => {
@@ -211,6 +213,27 @@ await page.click('text=Bilgileri elle gireceğim');
 await page.waitForSelector('text=Yeni kitap');
 await page.click('button:has-text("Kaydet")');
 check('Boş ad doğrulaması', await page.locator('text=Kitap adı boş olamaz').count() === 1);
+
+
+// Ücretsiz (telefonda) kapak okuma: sahte OCR motoru, kasıtlı okuma hatalarıyla
+await ctx.route(/tesseract\.min\.js/, (route) => route.fulfill({ status: 200, contentType: 'text/javascript', body: `
+  window.Tesseract = { createWorker: async () => ({
+    setParameters: async () => {},
+    recognize: async () => ({ data: { text: 'SEF1LLER Victor Hugo', blocks: [{ paragraphs: [{ lines: [
+      { text: 'SEF1LLER', confidence: 62, bbox: { x0: 50, y0: 400, x1: 800, y1: 540 }, words: [{ text: 'SEF1LLER', confidence: 62, bbox: { x0: 50, y0: 400, x1: 800, y1: 540 } }] },
+      { text: 'Victor Hugo', confidence: 80, bbox: { x0: 50, y0: 80, x1: 500, y1: 130 }, words: [
+        { text: 'Victor', confidence: 80, bbox: { x0: 50, y0: 80, x1: 250, y1: 130 } },
+        { text: 'Hugo', confidence: 80, bbox: { x0: 270, y0: 80, x1: 500, y1: 130 } } ] }
+    ] }] }] } })
+  }) };` }));
+await page.goto(base + '#/scan-cover');
+await page.waitForSelector('text=Daha doğru okuma için');
+const [chooser0] = await Promise.all([page.waitForEvent('filechooser'), page.click('button:has-text("Galeriden seç")')]);
+await chooser0.setFiles({ name: 'kapak.png', mimeType: 'image/png', buffer: png });
+await page.waitForSelector('text=Telefonda okundu (ücretsiz)');
+await page.waitForSelector('.best-match .li-title:has-text("Sefiller")');
+check('Ücretsiz okuma: hatalı "SEF1LLER" doğru kitapla eşleşti', (await page.locator('label:has-text("Kitap adı") input').inputValue()) === 'Sefiller');
+await page.screenshot({ path: `${OUT}/12-ucretsiz-eslesme.png`, fullPage: true });
 
 // Yapay zeka (Gemini, sahte yanıt) ile kapak okuma
 await ctx.route(/generativelanguage\.googleapis\.com/, (route) => {

@@ -6,6 +6,7 @@ import { readCover } from '../services/ocr.js';
 import { searchBooks, searchByTitleAuthor, lookupByIsbn } from '../services/lookup.js';
 import { getAi, useAi, readCoverWithAi, PROVIDERS } from '../services/ai.js';
 import { toIsbn13 } from '../lib/isbn.js';
+import { matchCover } from '../services/coverMatch.js';
 import { openForm, startFromInfo } from '../flows.js';
 import { useAsync, useObjectUrl } from '../hooks.js';
 import { DEMO } from '../env.js';
@@ -54,8 +55,20 @@ export default function CoverScan() {
     setLines(r.lines);
     const v = { title: r.title || '', author: r.author || '', publisher: '', subtitle: '', isbn: '' };
     setVals(v);
-    setReadBy('Telefonda metin tanıma');
-    return v;
+    setReadBy('Telefonda okundu (ücretsiz)');
+    // Okunan tüm kelimelerle ara ve örtüşmeye göre sırala
+    setProgress({ p: 0, text: 'Okunan kelimelerle kitap aranıyor…' });
+    try {
+      const { ranked } = await matchCover(r.words || [], r);
+      if (ranked.length) {
+        setResults(ranked);
+        const top = ranked[0];
+        if (top.matchScore >= 0.9) setVals({ title: top.title, author: top.author, publisher: top.publisher, subtitle: top.subtitle || '', isbn: top.isbn || '' });
+      }
+    } catch {
+      /* arama başarısız: kullanıcı elle düzeltir */
+    }
+    return { ...v, matched: true };
   };
 
   const choose = async (camera) => {
@@ -87,8 +100,10 @@ export default function CoverScan() {
         setOcrFailed(DEMO ? 'Kapaktan yazı okuma demo sürümünde kapalıdır. Fotoğrafı kapak olarak kullanıp bilgileri elle girebilirsiniz.' : 'Metin okuma yüklenemedi (ilk kullanımda internet gerekir). Fotoğrafı kapak olarak kullanıp bilgileri elle girebilirsiniz.');
       }
     }
-    setProgress(v ? { p: 0, text: 'Eşleşen kitaplar aranıyor…' } : null);
-    if (v) await autoSearch(v);
+    if (v && !v.matched) {
+      setProgress({ p: 0, text: 'Eşleşen kitaplar aranıyor…' });
+      await autoSearch(v);
+    }
     setProgress(null);
   };
 
@@ -203,12 +218,24 @@ export default function CoverScan() {
                 <input type="checkbox" checked={usePhoto} onChange={(e) => setUsePhoto(e.target.checked)} />
                 Kapak olarak benim fotoğrafımı kullan
               </label>
+              <p className="field-label">
+                {results[0]?.matchScore != null && results[0].matchScore < 0.6
+                  ? 'Kesin eşleşme bulunamadı. Doğru kitap listede yoksa bilgileri düzeltip yeniden arayın.'
+                  : 'Doğru kitabı seçin'}
+              </p>
               <ul className="list">
                 {results.map((b, i) => (
-                  <li key={i}>
-                    <button className="list-item" onClick={() => startFromInfo(b, { coverBlob: usePhoto ? photo : null })}>
+                  <li key={(b.isbn || b.title) + i} className="rise" style={{ '--i': i }}>
+                    <button
+                      className={'list-item' + (i === 0 && (b.matchScore == null || b.matchScore >= 0.6) ? ' best-match' : '')}
+                      onClick={() => {
+                        const { matchScore, ratingsCount, averageRating, source, ...info } = b;
+                        startFromInfo(info, { coverBlob: usePhoto ? photo : null });
+                      }}
+                    >
                       <Cover book={b} className="small" />
                       <span className="li-text">
+                        {i === 0 && (b.matchScore == null || b.matchScore >= 0.6) ? <span className="best-tag">En olası eşleşme</span> : null}
                         <span className="li-title">{b.title}</span>
                         <span className="li-author">{b.author || '—'}</span>
                         <span className="li-meta muted">{[b.publisher, (b.publishedDate || '').slice(0, 4)].filter(Boolean).join(' · ')}</span>
