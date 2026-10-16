@@ -1,4 +1,4 @@
-# Kitaplık — Ev kütüphanesi kayıt uygulaması (PWA, v0.1)
+# Kitaplık — Kitaplığın, cebinde. (PWA, v0.2)
 
 Evdeki kitaplarınızı barkod/QR okutarak ya da kapağı fotoğraflayarak dijitale taşıyan,
 iPhone ve Android'de çalışan web uygulaması. Veriler şimdilik yalnızca telefonda saklanır.
@@ -33,7 +33,8 @@ Alternatifler: GitHub Pages, Cloudflare Pages, Vercel (hepsi ücretsiz ve HTTPS)
 | Yorum, 5 yıldızlı puan, okuma tarih aralığı | ✅ |
 | Okundu / Okunuyor / Okunacak | ✅ Tarihler otomatik önerilir |
 | **Ek öneriler (eklendi)** | Seri tarama modu, sayfa ilerleme çubuğu, raf/konum, ödünç verilen kişi, etiketler, arama/sıralama, “Okunacak” listesine tek dokunuşla öneri ekleme, mükerrer ISBN uyarısı |
-| Tema (açık/koyu, 8 renk + özel renk, yazı boyutu, köşe) | ✅ Ayarlar ekranından |
+| Tema (sade siyah-beyaz; açık/koyu, yazı boyutu) | ✅ Ayarlar ekranından |
+| Kapak okuma için kendi yapay zeka anahtarı (Claude / ChatGPT / Gemini) | ✅ Anahtar yalnızca cihazda; model otomatik seçilir |
 | Yedekleme | ✅ JSON yedek/geri yükleme (fotoğraflar dahil), CSV (Excel) dışa aktarma |
 | Çevrimdışı çalışma | ✅ Service worker |
 

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { ACCENTS, RADII, resetSettings, updateSettings, useSettings } from '../settings.js';
+import { resetSettings, updateSettings, useSettings } from '../settings.js';
+import AiSettings from '../components/AiSettings.jsx';
 import { repo, requestPersistence } from '../data/repo.js';
 import { Icon, Segmented, TopBar, toast, askConfirm } from '../components/ui.jsx';
 import { back } from '../router.js';
@@ -99,23 +100,6 @@ export default function Settings() {
             { value: 'dark', label: 'Koyu' },
           ]}
         />
-        <p className="field-label">Vurgu rengi</p>
-        <div className="swatches">
-          {ACCENTS.map((a) => (
-            <button
-              key={a.value}
-              className={'swatch' + (s.accent === a.value ? ' on' : '')}
-              style={{ background: a.value }}
-              onClick={() => updateSettings({ accent: a.value })}
-              aria-label={a.name}
-              title={a.name}
-            />
-          ))}
-          <label className="swatch custom" title="Özel renk">
-            <input type="color" value={s.accent} onChange={(e) => updateSettings({ accent: e.target.value })} aria-label="Özel renk" />
-            <Icon name="plus" size={16} />
-          </label>
-        </div>
         <p className="field-label">Yazı boyutu</p>
         <input
           type="range"
@@ -125,12 +109,6 @@ export default function Settings() {
           value={s.fontScale}
           onChange={(e) => updateSettings({ fontScale: Number(e.target.value) })}
           aria-label="Yazı boyutu"
-        />
-        <p className="field-label">Köşeler</p>
-        <Segmented
-          value={s.radius}
-          onChange={(radius) => updateSettings({ radius })}
-          options={Object.keys(RADII).map((k) => ({ value: k, label: { sharp: 'Keskin', soft: 'Yumuşak', round: 'Yuvarlak' }[k] }))}
         />
         <p className="field-label">Kitaplık görünümü</p>
         <Segmented
@@ -145,6 +123,8 @@ export default function Settings() {
           Varsayılan görünüme dön
         </button>
       </section>
+
+      <AiSettings />
 
       <section className="card">
         <h3>Yedekleme ve veri</h3>

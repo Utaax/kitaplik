@@ -4,6 +4,7 @@ import { useSettings, updateSettings } from '../settings.js';
 import { go } from '../router.js';
 import { normalizeText } from '../lib/util.js';
 import { DEMO } from '../env.js';
+import Logo, { MOTTO } from '../components/Logo.jsx';
 import { loadSamples } from '../demoData.js';
 import { SkeletonGrid, Cover, EmptyState, Icon, Spinner, StatusBadge, STATUS, STATUS_KEYS, Stars } from '../components/ui.jsx';
 
@@ -22,6 +23,19 @@ function sortBooks(list, sort) {
   else if (sort === 'rating') copy.sort((a, b) => (b.rating || 0) - (a.rating || 0) || tr(a.title, b.title));
   else copy.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
   return copy;
+}
+
+function BrandHeader({ meta = '' }) {
+  return (
+    <div className="brand-row">
+      <Logo size={42} />
+      <div className="brand-text">
+        <h1 className="brand">Kitaplık</h1>
+        <p className="motto">{MOTTO}</p>
+        {meta ? <p className="hero-meta">{meta}</p> : null}
+      </div>
+    </div>
+  );
 }
 
 export default function Library({ highlight }) {
@@ -75,7 +89,7 @@ export default function Library({ highlight }) {
     return (
       <div className="screen">
         <header className="hero-head">
-          <h1 className="brand">Kitaplık</h1>
+          <BrandHeader />
         </header>
         <SkeletonGrid />
       </div>
@@ -85,12 +99,7 @@ export default function Library({ highlight }) {
   return (
     <div className="screen">
       <header className="hero-head">
-        <div>
-          <h1 className="brand">Kitaplık</h1>
-          <p className="muted">
-            {counts.all} kitap{readThisYear ? ` · bu yıl ${readThisYear} kitap okudunuz` : ''}
-          </p>
-        </div>
+        <BrandHeader meta={counts.all ? `${counts.all} kitap${readThisYear ? ` · bu yıl ${readThisYear} kitap okudunuz` : ''}` : ''} />
         <button
           className="icon-btn"
           aria-label={view === 'grid' ? 'Liste görünümü' : 'Izgara görünümü'}

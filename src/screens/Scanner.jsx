@@ -52,7 +52,7 @@ export default function Scanner({ query }) {
       let stream;
       try {
         stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } },
+          video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } },
           audio: false,
         });
       } catch {
@@ -69,8 +69,14 @@ export default function Scanner({ query }) {
       video.srcObject = stream;
       await video.play().catch(() => {});
       try {
-        const caps = stream.getVideoTracks()[0].getCapabilities?.() || {};
+        const track = stream.getVideoTracks()[0];
+        const caps = track.getCapabilities?.() || {};
         setTorch({ supported: !!caps.torch, on: false });
+        // Sürekli odak ve hafif yakınlaştırma: barkodu yaklaştırmadan net okumaya yardım eder
+        const adv = {};
+        if (Array.isArray(caps.focusMode) && caps.focusMode.includes('continuous')) adv.focusMode = 'continuous';
+        if (caps.zoom && caps.zoom.max >= 1.6) adv.zoom = Math.min(2, caps.zoom.max);
+        if (Object.keys(adv).length) track.applyConstraints({ advanced: [adv] }).catch(() => {});
       } catch {
         /* el feneri desteklenmiyor */
       }
@@ -93,16 +99,17 @@ export default function Scanner({ query }) {
           const vw = video.videoWidth;
           const vh = video.videoHeight;
           const ctx = canvas.getContext('2d', { willReadFrequently: true });
-          if (tick++ % 2 === 0) {
-            // Ortadaki yatay bant: 1B barkodlar için hızlı ve kararlı
-            const cw = Math.round(vw * 0.9);
-            const ch = Math.round(vh * 0.5);
+          const mode = tick++ % 3;
+          if (mode !== 2) {
+            // Ortadaki bant (tam çözünürlük): 1B barkodlar için; iki farklı yükseklik dene
+            const cw = Math.round(vw * 0.92);
+            const ch = Math.round(vh * (mode === 0 ? 0.42 : 0.7));
             canvas.width = cw;
             canvas.height = ch;
             ctx.drawImage(video, Math.round((vw - cw) / 2), Math.round((vh - ch) / 2), cw, ch, 0, 0, cw, ch);
           } else {
             // Tüm kare: QR kodlar için
-            const scale = Math.min(1, 960 / vw);
+            const scale = Math.min(1, 1280 / vw);
             canvas.width = Math.round(vw * scale);
             canvas.height = Math.round(vh * scale);
             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
@@ -116,7 +123,7 @@ export default function Scanner({ query }) {
         } finally {
           busy = false;
         }
-      }, 160);
+      }, 110);
     }
 
     start();

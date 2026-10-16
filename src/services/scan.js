@@ -29,6 +29,29 @@ export function loadScript(url) {
   });
 }
 
+const WASM_DETECTOR_URL = 'https://cdn.jsdelivr.net/npm/barcode-detector@3.2.2/dist/es/ponyfill.js/+esm';
+let wasmDetectorPromise = null;
+function loadWasmDetector() {
+  if (!wasmDetectorPromise) {
+    wasmDetectorPromise = (async () => {
+      const url = WASM_DETECTOR_URL; // değişkenden içe aktarma: paketleyici dokunmaz
+      const mod = await import(/* @vite-ignore */ url);
+      const BD = mod.BarcodeDetector || mod.default?.BarcodeDetector;
+      if (!BD) return null;
+      const det = new BD({ formats: ['ean_13', 'ean_8', 'upc_a', 'qr_code', 'code_128'] });
+      // Motoru önceden ısıt (wasm dosyasını indirir)
+      const c = document.createElement('canvas');
+      c.width = c.height = 16;
+      await det.detect(c).catch(() => []);
+      return det;
+    })().catch((e) => {
+      wasmDetectorPromise = null;
+      throw e;
+    });
+  }
+  return wasmDetectorPromise;
+}
+
 async function loadZXing() {
   if (window.ZXing) return window.ZXing;
   await loadScript(ZXING_URL);
@@ -60,6 +83,26 @@ export async function createDecoder() {
     } catch {
       /* ZXing'e düş */
     }
+  }
+
+  // iOS ve diğerleri: zxing-cpp'nin WebAssembly sürümü (eski ZXing JS'ten çok daha başarılı)
+  try {
+    const det = await loadWasmDetector();
+    if (det) {
+      return {
+        engine: 'zxing-wasm',
+        async decode(canvas) {
+          try {
+            const found = await det.detect(canvas);
+            return found.length ? found[0].rawValue : null;
+          } catch {
+            return null;
+          }
+        },
+      };
+    }
+  } catch {
+    /* eski motora düş */
   }
 
   const Z = await loadZXing();

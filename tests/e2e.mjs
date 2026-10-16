@@ -188,8 +188,7 @@ await page.screenshot({ path: `${OUT}/07-ayarlar.png`, fullPage: true });
 // Tema değişimi
 await page.click('button:has-text("Koyu")');
 check('Koyu tema uygulandı', (await page.evaluate(() => document.documentElement.dataset.theme)) === 'dark');
-await page.click('button[aria-label="Bordo"]');
-check('Vurgu rengi değişti', (await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--accent').trim())) === '#8c2f39');
+check('Renk seçenekleri kaldırıldı', (await page.locator('.swatch').count()) === 0);
 await page.screenshot({ path: `${OUT}/08-koyu.png`, fullPage: true });
 
 // Tüm veriyi sil ve yedekten geri yükle
@@ -212,6 +211,36 @@ await page.click('text=Bilgileri elle gireceğim');
 await page.waitForSelector('text=Yeni kitap');
 await page.click('button:has-text("Kaydet")');
 check('Boş ad doğrulaması', await page.locator('text=Kitap adı boş olamaz').count() === 1);
+
+// Yapay zeka (Gemini, sahte yanıt) ile kapak okuma
+await ctx.route(/generativelanguage\.googleapis\.com/, (route) => {
+  const u = route.request().url();
+  if (/\/models\?/.test(u)) {
+    return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ models: [
+      { name: 'models/gemini-3.8-flash', supportedGenerationMethods: ['generateContent'] },
+      { name: 'models/gemini-3.8-pro', supportedGenerationMethods: ['generateContent'] },
+    ] }) });
+  }
+  const body = JSON.parse(route.request().postData() || '{}');
+  const hasImage = !!body.contents?.[0]?.parts?.some((p) => p.inline_data?.data?.length > 100);
+  route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ candidates: [{ content: { parts: [{ text: JSON.stringify({ title: hasImage ? 'Sefiller' : '', author: 'Victor Hugo', publisher: 'Can Yayınları' }) }] } }] }) });
+});
+await page.goto(base + '#/settings');
+await page.click('.segmented button:has-text("Gemini")');
+await page.fill('input[placeholder="AIza…"]', 'AIza-test-anahtari-123456');
+await page.click('button:has-text("Bağla ve test et")');
+await page.waitForSelector('text=Gemini bağlı');
+check('Gemini bağlandı ve Flash modeli seçildi', (await page.inputValue('.wide-select')) === 'gemini-3.8-flash');
+await page.screenshot({ path: `${OUT}/10-ai-ayar.png`, fullPage: true });
+await page.goto(base + '#/scan-cover');
+await page.waitForSelector('text=Gemini ile okunacak');
+const [chooser] = await Promise.all([page.waitForEvent('filechooser'), page.click('button:has-text("Galeriden seç")')]);
+await chooser.setFiles({ name: 'kapak.png', mimeType: 'image/png', buffer: png });
+await page.waitForSelector('text=Gemini ile okundu');
+check('Kapak yapay zeka ile okundu', (await page.locator('label:has-text("Kitap adı") input').inputValue()) === 'Sefiller' && (await page.locator('label:has-text("Yayınevi") input').inputValue()) === 'Can Yayınları');
+await page.waitForSelector('.list .li-title:has-text("Sefiller")');
+check('Okunan kapakla eşleşen kitap bulundu', true);
+await page.screenshot({ path: `${OUT}/11-ai-kapak.png`, fullPage: true });
 
 // Tarayıcı ekranı: kamera olmayan ortamda zarif hata
 await page.goto(base + '#/scan');

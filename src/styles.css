@@ -1,69 +1,64 @@
-/* ============ Tasarım değişkenleri (tema) ============
-   Renkler, köşe yuvarlaklığı ve yazı boyutu buradan (ve Ayarlar ekranından) değiştirilir. */
+/* ============ Tasarım değişkenleri ============
+   Sade, tek renkli tema: kâğıt beyazı ve mürekkep siyahı. Vurgu rengi metnin kendisidir. */
 :root {
-  --bg: #fbf7f0;
+  --bg: #fafafa;
   --surface: #ffffff;
-  --surface-2: #f4eee3;
-  --text: #231f1a;
-  --muted: #6f675d;
-  --border: #e6dfd2;
-  --shadow: 0 1px 2px rgba(60, 40, 10, 0.06), 0 4px 14px rgba(60, 40, 10, 0.06);
-  --danger: #b3261e;
-  --ok: #2e7d4f;
-  --warn: #9a6a00;
-  --accent: #2f5d50;
+  --surface-2: #f2f2f2;
+  --text: #111111;
+  --muted: #6e6e73;
+  --border: #e8e8ea;
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.08);
+  --danger: #c62828;
+  --ok: #1f7a4a;
+  --warn: #8a6100;
+  --accent: #111111;
   --accent-ink: #ffffff;
-  --accent-soft: #e3ece8; /* color-mix desteklenmezse */
-  --radius: 14px;
+  --accent-soft: #f0f0f1;
+  --star: #111111;
+  --radius: 16px;
   --font-scale: 1;
-  --font-body: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
-  --font-head: 'Iowan Old Style', 'Palatino Linotype', Palatino, 'Book Antiqua', Georgia, serif;
+  --font-body: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-head: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   --tabbar-h: 64px;
   color-scheme: light;
 }
-@supports (background: color-mix(in srgb, red 10%, white)) {
-  :root {
-    --accent-soft: color-mix(in srgb, var(--accent) 14%, var(--surface));
-  }
-}
 :root[data-theme='dark'] {
-  --bg: #16181a;
-  --surface: #202325;
-  --surface-2: #2a2e30;
-  --text: #ecebe8;
-  --muted: #a2a09a;
-  --border: #353a3d;
-  --shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
-  --danger: #ff8a80;
-  --ok: #6fcf97;
-  --warn: #e6b450;
-  --accent-soft: #2b3b36;
+  --bg: #0b0b0c;
+  --surface: #161618;
+  --surface-2: #1f1f22;
+  --text: #f4f4f5;
+  --muted: #9a9aa0;
+  --border: #2a2a2e;
+  --shadow: none;
+  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.5);
+  --danger: #ff6b6b;
+  --ok: #4cc38a;
+  --warn: #e0b04a;
+  --accent: #f4f4f5;
+  --accent-ink: #0b0b0c;
+  --accent-soft: #232326;
+  --star: #f4f4f5;
   color-scheme: dark;
 }
 @media (prefers-color-scheme: dark) {
   :root[data-theme='auto'] {
-    --bg: #16181a;
-    --surface: #202325;
-    --surface-2: #2a2e30;
-    --text: #ecebe8;
-    --muted: #a2a09a;
-    --border: #353a3d;
-    --shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
-    --danger: #ff8a80;
-    --ok: #6fcf97;
-    --warn: #e6b450;
-    --accent-soft: #2b3b36;
+    --bg: #0b0b0c;
+    --surface: #161618;
+    --surface-2: #1f1f22;
+    --text: #f4f4f5;
+    --muted: #9a9aa0;
+    --border: #2a2a2e;
+    --shadow: none;
+    --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.5);
+    --danger: #ff6b6b;
+    --ok: #4cc38a;
+    --warn: #e0b04a;
+    --accent: #f4f4f5;
+    --accent-ink: #0b0b0c;
+    --accent-soft: #232326;
+    --star: #f4f4f5;
     color-scheme: dark;
-  }
-}
-@supports (background: color-mix(in srgb, red 10%, white)) {
-  :root[data-theme='dark'] {
-    --accent-soft: color-mix(in srgb, var(--accent) 25%, var(--surface));
-  }
-  @media (prefers-color-scheme: dark) {
-    :root[data-theme='auto'] {
-      --accent-soft: color-mix(in srgb, var(--accent) 25%, var(--surface));
-    }
   }
 }
 
@@ -1705,3 +1700,63 @@ details.card > :not(summary) {
   30% { box-shadow: 0 0 0 6px var(--accent); transform: scale(1.04); }
   100% { box-shadow: 0 0 0 14px transparent; transform: scale(1); }
 }
+
+
+/* ================= Sade, modern görünüm (son katman) ================= */
+h1, h2, h3, h4 { font-weight: 700; letter-spacing: -0.02em; }
+h3 { font-size: 1.02rem; }
+.brand { font-size: 1.6rem; letter-spacing: -0.03em; }
+.card { border-color: var(--border); box-shadow: none; }
+.btn { border-radius: 999px; font-weight: 600; letter-spacing: -0.005em; }
+.btn.ghost { background: transparent; }
+.chip { border-radius: 999px; background: transparent; }
+.chip.on { background: var(--text); border-color: var(--text); color: var(--bg); }
+.searchbox { background: var(--surface-2); border-color: transparent; }
+.segmented { background: var(--surface-2); }
+.action-card { color: var(--text); box-shadow: none; }
+.action-card .icon { padding: 8px; box-sizing: content-box; border-radius: 12px; background: var(--surface-2); }
+.tip { background: var(--surface-2); }
+.notice.ok { background: var(--surface-2); }
+.badge { background: transparent; border: 1px solid var(--border); color: var(--muted); font-weight: 600; }
+.badge-reading { background: transparent; border-color: var(--text); color: var(--text); }
+.badge-read { background: var(--text); border-color: var(--text); color: var(--bg); }
+.star { color: var(--border); }
+.star.on { color: var(--star); }
+.page-pill { background: var(--text); color: var(--bg); }
+.tabbar button.primary .icon { background: var(--text); color: var(--bg); box-shadow: var(--shadow-lg); }
+.tabbar button.on { color: var(--text); }
+.cover { border-radius: 6px; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1), 0 6px 16px rgba(0, 0, 0, 0.08); }
+.burst-card { box-shadow: var(--shadow-lg); }
+.toast { background: var(--text); color: var(--bg); }
+.toast-success .icon { color: var(--bg); }
+.toast-error { background: var(--danger); color: #fff; }
+
+/* Üretilen kapaklar: tek renkli, tipografik */
+.cover-generated { font-family: var(--font-head); text-align: left; padding: 12px 10px; }
+.cover-generated .cover-title { font-weight: 700; letter-spacing: -0.01em; }
+.cover-generated.tone-light { color: #111; }
+.cover-generated.tone-dark { color: #f4f4f5; }
+.cover-generated::after {
+  content: '';
+  position: absolute;
+  left: 6px;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: rgba(127, 127, 127, 0.25);
+}
+
+/* Logo ve motto */
+.brand-row { display: flex; align-items: center; gap: 12px; }
+.logo { width: 40px; height: 40px; flex-shrink: 0; color: var(--text); }
+.brand-text { display: flex; flex-direction: column; min-width: 0; }
+.motto { font-size: 0.86rem; color: var(--muted); margin: 0; letter-spacing: -0.005em; }
+.hero-meta { font-size: 0.8rem; color: var(--muted); margin: 0.2rem 0 0; }
+
+/* Yapay zeka */
+.ai-connected { display: flex; align-items: center; gap: 0.7rem; padding: 10px 12px; border-radius: 12px; background: var(--surface-2); margin-bottom: 0.6rem; }
+.ai-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 0 4px color-mix(in srgb, var(--ok) 20%, transparent); flex-shrink: 0; }
+.ai-badge { display: inline-flex; align-items: center; gap: 0.45rem; font-size: 0.8rem; font-weight: 600; padding: 4px 10px; border-radius: 999px; background: var(--surface-2); margin: 0 0 0.4rem; }
+.wide-select { width: 100%; }
+.logo .logo-ink { fill: var(--bg); }
+.logo { border-radius: 12px; }

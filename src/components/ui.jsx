@@ -61,26 +61,43 @@ export function BlobImg({ blob, alt = '', className = '', onClick }) {
   return <img src={url} alt={alt} className={className} onClick={onClick} />;
 }
 
-const COVER_COLORS = ['#2f5d50', '#8c2f39', '#2b4c7e', '#c8643b', '#6b4c9a', '#17717d', '#a67c00', '#3d4451'];
+// Otomatik kapaklar için tek renkli tonlar (açık tonlarda koyu yazı)
+const COVER_TONES = [
+  { bg: '#1c1c1e', tone: 'dark' },
+  { bg: '#2c2c2e', tone: 'dark' },
+  { bg: '#3a3a3c', tone: 'dark' },
+  { bg: '#e5e5e7', tone: 'light' },
+  { bg: '#d1d1d6', tone: 'light' },
+  { bg: '#f2f2f4', tone: 'light' },
+];
 
 // Kapak: yerel kopya → uzak adres → otomatik üretilen kapak (yüklenince yumuşakça belirir)
 export function Cover({ book, className = '' }) {
   const [failed, setFailed] = useState(false);
-  const [loaded, setLoaded] = useState(false);
+  // Yüklenen adresi sakla: hızlı (önbellekten) yüklenen görsel görünmez kalmasın
+  const [loadedSrc, setLoadedSrc] = useState('');
   const url = useObjectUrl(book.cover);
   useEffect(() => setFailed(false), [book.coverUrl]);
   const src = url || (!failed && book.coverUrl) || '';
-  useEffect(() => setLoaded(false), [src]);
+  const loaded = loadedSrc === src;
   if (src) {
     return (
       <div className={'cover ' + className + (loaded ? ' is-loaded' : ' is-loading')}>
-        <img src={src} alt={book.title} loading="lazy" onLoad={() => setLoaded(true)} onError={() => setFailed(true)} />
+        <img
+          src={src}
+          alt={book.title}
+          ref={(el) => {
+            if (el && el.complete && el.naturalWidth && loadedSrc !== src) setLoadedSrc(src);
+          }}
+          onLoad={() => setLoadedSrc(src)}
+          onError={() => setFailed(true)}
+        />
       </div>
     );
   }
-  const color = COVER_COLORS[hashString(book.title || 'x') % COVER_COLORS.length];
+  const t = COVER_TONES[hashString(book.title || 'x') % COVER_TONES.length];
   return (
-    <div className={'cover cover-generated ' + className} style={{ background: color }} aria-label={book.title}>
+    <div className={'cover cover-generated tone-' + t.tone + ' ' + className} style={{ background: t.bg }} aria-label={book.title}>
       <span className="cover-title">{book.title || 'Adsız'}</span>
       {book.author ? <span className="cover-author">{book.author}</span> : null}
     </div>

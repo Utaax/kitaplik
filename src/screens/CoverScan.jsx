@@ -1,9 +1,11 @@
 import { useState } from 'react';
-import { back } from '../router.js';
+import { back, go } from '../router.js';
 import { Cover, Field, Icon, Spinner, TopBar } from '../components/ui.jsx';
 import { pickImage, resizeImage } from '../services/images.js';
 import { readCover } from '../services/ocr.js';
-import { searchBooks } from '../services/lookup.js';
+import { searchBooks, searchByTitleAuthor, lookupByIsbn } from '../services/lookup.js';
+import { getAi, useAi, readCoverWithAi, PROVIDERS } from '../services/ai.js';
+import { toIsbn13 } from '../lib/isbn.js';
 import { openForm, startFromInfo } from '../flows.js';
 import { useAsync, useObjectUrl } from '../hooks.js';
 import { DEMO } from '../env.js';
@@ -18,7 +20,9 @@ export default function CoverScan() {
   const [photo, setPhoto] = useState(null);
   const photoUrl = useObjectUrl(photo);
   const [lines, setLines] = useState([]);
-  const [vals, setVals] = useState({ title: '', author: '', publisher: '' });
+  const [vals, setVals] = useState({ title: '', author: '', publisher: '', subtitle: '', isbn: '' });
+  const [readBy, setReadBy] = useState(''); // hangi yöntemle okundu
+  const ai = useAi();
   const [active, setActive] = useState('title');
   const [progress, setProgress] = useState(null); // { p, text }
   const [results, setResults] = useState(null);
@@ -26,21 +30,65 @@ export default function CoverScan() {
   const [ocrFailed, setOcrFailed] = useState('');
   const { run, loading, error } = useAsync();
 
+  const autoSearch = async (v) => {
+    try {
+      const isbn = toIsbn13(v.isbn);
+      if (isbn) {
+        const hit = await lookupByIsbn(isbn);
+        if (hit) {
+          setResults([hit]);
+          return;
+        }
+      }
+      if (!v.title) return;
+      let list = await searchByTitleAuthor(v.title, v.author);
+      if (!list.length) list = await searchBooks([v.title, v.author].filter(Boolean).join(' '));
+      if (list.length) setResults(list.slice(0, 6));
+    } catch {
+      /* arama başarısızsa kullanıcı elle devam eder */
+    }
+  };
+
+  const runLocalOcr = async (blob) => {
+    const r = await readCover(blob, (p, text) => setProgress({ p, text }));
+    setLines(r.lines);
+    const v = { title: r.title || '', author: r.author || '', publisher: '', subtitle: '', isbn: '' };
+    setVals(v);
+    setReadBy('Telefonda metin tanıma');
+    return v;
+  };
+
   const choose = async (camera) => {
     const file = await pickImage({ camera });
     if (!file) return;
     setResults(null);
     setOcrFailed('');
+    setLines([]);
     const { blob } = await resizeImage(file, 1600, 0.85);
     setPhoto(blob);
-    setProgress({ p: 0, text: 'Kapak okunuyor…' });
-    try {
-      const r = await readCover(blob, (p, text) => setProgress({ p, text }));
-      setLines(r.lines);
-      setVals((v) => ({ ...v, title: r.title || '', author: r.author || '' }));
-    } catch {
-      setOcrFailed(DEMO ? 'Kapaktan yazı okuma demo sürümünde kapalıdır. Fotoğrafı kapak olarak kullanıp bilgileri elle girebilirsiniz.' : 'Metin okuma yüklenemedi (ilk kullanımda internet gerekir). Fotoğrafı kapak olarak kullanıp bilgileri elle girebilirsiniz.');
+    const cfg = getAi();
+    let v = null;
+    if (cfg) {
+      setProgress({ p: 0, text: `${PROVIDERS[cfg.provider].label} kapağı okuyor…` });
+      try {
+        const r = await readCoverWithAi(blob, cfg);
+        v = { title: r.title, author: r.author, publisher: r.publisher, subtitle: r.subtitle, isbn: r.isbn };
+        setVals(v);
+        setReadBy(`${PROVIDERS[cfg.provider].label} ile okundu`);
+      } catch (e) {
+        setOcrFailed(`${PROVIDERS[cfg.provider].label} ile okunamadı: ${e.message} Telefonda metin tanıma deneniyor.`);
+      }
     }
+    if (!v) {
+      setProgress({ p: 0, text: 'Kapak okunuyor…' });
+      try {
+        v = await runLocalOcr(blob);
+      } catch {
+        setOcrFailed(DEMO ? 'Kapaktan yazı okuma demo sürümünde kapalıdır. Fotoğrafı kapak olarak kullanıp bilgileri elle girebilirsiniz.' : 'Metin okuma yüklenemedi (ilk kullanımda internet gerekir). Fotoğrafı kapak olarak kullanıp bilgileri elle girebilirsiniz.');
+      }
+    }
+    setProgress(v ? { p: 0, text: 'Eşleşen kitaplar aranıyor…' } : null);
+    if (v) await autoSearch(v);
     setProgress(null);
   };
 
@@ -63,7 +111,16 @@ export default function CoverScan() {
       {!photo && !progress ? (
         <div className="card center">
           <Icon name="camera" size={40} />
-          <p>Kitabın ön kapağını düz ve iyi ışıkta fotoğraflayın. Başlık ve yazar otomatik algılanır; sonra düzeltebilirsiniz.</p>
+          <p>Kitabın ön kapağını düz ve iyi ışıkta fotoğraflayın. Başlık, yazar ve yayınevi otomatik algılanır; sonra düzeltebilirsiniz.</p>
+          {ai ? (
+            <p className="ai-badge">
+              <span className="ai-dot" aria-hidden="true" /> {PROVIDERS[ai.provider].label} ile okunacak
+            </p>
+          ) : (
+            <button className="btn link" onClick={() => go('/settings')}>
+              Daha doğru okuma için yapay zeka hesabınızı bağlayın
+            </button>
+          )}
           <div className="stack">
             <button className="btn primary wide" onClick={() => choose(true)}>
               <Icon name="camera" size={18} /> Fotoğraf çek
@@ -87,7 +144,8 @@ export default function CoverScan() {
           <div className="card row-top">
             {photoUrl ? <img className="preview-cover small" src={photoUrl} alt="Çekilen kapak" /> : null}
             <div className="grow">
-              {ocrFailed ? <p className="error">{ocrFailed}</p> : <p className="muted">Algılanan bilgileri düzeltin. Aşağıdaki kutucuklara dokunarak seçili alana ekleyebilirsiniz.</p>}
+              {readBy ? <p className="ai-badge">{readBy}</p> : null}
+              {ocrFailed ? <p className="error">{ocrFailed}</p> : <p className="muted">Bilgileri kontrol edin, gerekirse düzeltin.</p>}
               <button className="btn ghost small" onClick={() => choose(true)}>
                 Yeniden çek
               </button>
@@ -128,7 +186,7 @@ export default function CoverScan() {
               className="btn ghost wide"
               onClick={() =>
                 openForm(
-                  { title: vals.title, author: vals.author, publisher: vals.publisher },
+                  { title: vals.title, subtitle: vals.subtitle, author: vals.author, publisher: vals.publisher, isbn: toIsbn13(vals.isbn) || '' },
                   { coverBlob: photo, found: false }
                 )
               }

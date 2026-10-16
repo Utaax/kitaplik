@@ -7,7 +7,7 @@ const SHELL_FILES = [
   './icons/icon-192.png', './icons/icon-512.png', './icons/icon.svg',
 ];
 // Barkod ve OCR kütüphaneleri ilk kullanımdan sonra çevrimdışı da çalışsın
-const RUNTIME_HOSTS = ['cdn.jsdelivr.net', 'tessdata.projectnaptha.com', 'unpkg.com'];
+const RUNTIME_HOSTS = ['cdn.jsdelivr.net', 'fastly.jsdelivr.net', 'tessdata.projectnaptha.com', 'unpkg.com'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(SHELL).then((c) => c.addAll(SHELL_FILES)).then(() => self.skipWaiting()));
