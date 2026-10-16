@@ -9,6 +9,13 @@ import { resizeImage } from './images.js';
 const KEY = 'kitaplik.ai.v1';
 
 export const PROVIDERS = {
+  gemini: {
+    label: 'Gemini (ücretsiz)',
+    company: 'Google',
+    keyUrl: 'https://aistudio.google.com/apikey',
+    keyHint: 'AIza…',
+    note: 'Ücretsiz katmanı var; kapak okumak için yeterli (günlük kullanım sınırıyla). Kredi kartı gerekmeden Google hesabınızla Google AI Studio’dan anahtar alınır.',
+  },
   anthropic: {
     label: 'Claude',
     company: 'Anthropic',
@@ -22,13 +29,6 @@ export const PROVIDERS = {
     keyUrl: 'https://platform.openai.com/api-keys',
     keyHint: 'sk-…',
     note: 'Ücretli (kullandıkça öde). ChatGPT Plus aboneliği API’yi kapsamaz; anahtar OpenAI Platform’dan alınır.',
-  },
-  gemini: {
-    label: 'Gemini',
-    company: 'Google',
-    keyUrl: 'https://aistudio.google.com/apikey',
-    keyHint: 'AIza…',
-    note: 'Ücretsiz katmanı var (günlük sınırlarla). Anahtar Google AI Studio’dan alınır.',
   },
 };
 
@@ -87,6 +87,11 @@ async function request(url, opts = {}, timeoutMs = 45000) {
   }
   if (!res.ok) {
     const msg = body?.error?.message || body?.error?.status || body?.message || '';
+    const code = body?.error?.code || body?.error?.type || '';
+    if (code === 'insufficient_quota' || /insufficient_quota|exceeded your current quota/i.test(msg))
+      throw new Error('OpenAI hesabınızda kullanılabilir bakiye yok. OpenAI API ücretsiz değildir; kullanmak için OpenAI Platform’da Billing bölümünden bakiye yüklemeniz gerekir. Ücretsiz seçenek için Gemini’yi bağlayabilirsiniz.');
+    if (/credit balance is too low/i.test(msg))
+      throw new Error('Claude API hesabınızda bakiye yok. Claude Console’dan bakiye yükleyin ya da ücretsiz seçenek için Gemini’yi bağlayın.');
     if (res.status === 401 || res.status === 403 || /api key|invalid.*key|permission/i.test(msg))
       throw new Error('API anahtarı geçersiz ya da yetkisiz. Anahtarı kontrol edin.');
     if (res.status === 429) throw new Error('Kullanım sınırına ulaşıldı ya da hesapta bakiye yok. Biraz bekleyip yeniden deneyin.');
