@@ -15,3 +15,10 @@ if ('serviceWorker' in navigator && location.protocol !== 'file:') {
     });
   });
 }
+
+// Yakalanmamış hatalar sayfanın altına düşmesin: anlaşılır bir bildirim göster
+import { toast } from './components/ui.jsx';
+import { friendlyError } from './lib/util.js';
+window.addEventListener('unhandledrejection', (e) => {
+  toast(friendlyError(e.reason), 'error');
+});

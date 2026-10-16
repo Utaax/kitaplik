@@ -5,7 +5,7 @@ import { go } from '../router.js';
 import { normalizeText } from '../lib/util.js';
 import { DEMO } from '../env.js';
 import { loadSamples } from '../demoData.js';
-import { Cover, EmptyState, Icon, Spinner, StatusBadge, STATUS, STATUS_KEYS, Stars } from '../components/ui.jsx';
+import { SkeletonGrid, Cover, EmptyState, Icon, Spinner, StatusBadge, STATUS, STATUS_KEYS, Stars } from '../components/ui.jsx';
 
 const SORTS = [
   { value: 'added', label: 'Eklenme' },
@@ -65,7 +65,16 @@ export default function Library() {
       </div>
     );
   }
-  if (!books) return <Spinner label="Kitaplık açılıyor…" />;
+  if (!books) {
+    return (
+      <div className="screen">
+        <header className="hero-head">
+          <h1 className="brand">Kitaplık</h1>
+        </header>
+        <SkeletonGrid />
+      </div>
+    );
+  }
 
   return (
     <div className="screen">
@@ -153,8 +162,8 @@ export default function Library() {
         </EmptyState>
       ) : view === 'grid' ? (
         <div className="grid">
-          {shown.map((b) => (
-            <button key={b.id} className="grid-item" onClick={() => go(`/book/${b.id}`)}>
+          {shown.map((b, i) => (
+            <button key={b.id} className="grid-item rise" style={{ '--i': Math.min(i, 14) }} onClick={() => go(`/book/${b.id}`)}>
               <Cover book={b} />
               <span className="gi-title">{b.title}</span>
               <span className="gi-author">{b.author}</span>
@@ -164,8 +173,8 @@ export default function Library() {
         </div>
       ) : (
         <ul className="list">
-          {shown.map((b) => (
-            <li key={b.id}>
+          {shown.map((b, i) => (
+            <li key={b.id} className="rise" style={{ '--i': Math.min(i, 14) }}>
               <button className="list-item" onClick={() => go(`/book/${b.id}`)}>
                 <Cover book={b} className="small" />
                 <span className="li-text">

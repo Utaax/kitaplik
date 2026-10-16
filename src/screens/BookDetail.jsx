@@ -5,7 +5,7 @@ import { useBook, useNotes } from '../hooks.js';
 import { BlobImg, Cover, Icon, Segmented, Sheet, Spinner, STATUS, STATUS_KEYS, Stars, TopBar, toast, askConfirm } from '../components/ui.jsx';
 import NoteEditor from '../components/NoteEditor.jsx';
 import Discover from '../components/Discover.jsx';
-import { formatDate, formatDateTime, todayISO, yearOf, clamp } from '../lib/util.js';
+import { formatDate, formatDateTime, todayISO, yearOf, clamp, friendlyError } from '../lib/util.js';
 
 function Progress({ book, onSave }) {
   const total = book.pageCount || 0;
@@ -48,9 +48,9 @@ function Progress({ book, onSave }) {
   );
 }
 
-function NoteCard({ note, onEdit, onDelete, onZoom }) {
+function NoteCard({ i = 0, note, onEdit, onDelete, onZoom }) {
   return (
-    <li className="note">
+    <li className="note rise" style={{ '--i': Math.min(i, 10) }}>
       <div className="note-head">
         {note.page ? <span className="page-pill">Sayfa {note.page}</span> : <span className="page-pill none">Sayfa yok</span>}
         <span className="muted small">{formatDateTime(note.createdAt)}</span>
@@ -76,7 +76,10 @@ function BookView({ book }) {
   const [zoom, setZoom] = useState(null);
   const [noteSort, setNoteSort] = useState('date');
 
-  const update = (patch) => repo.saveBook({ ...book, ...patch });
+  const update = (patch) =>
+    repo.saveBook({ ...book, ...patch }).catch((e) => {
+      toast(friendlyError(e, 'Değişiklik kaydedilemedi.'), 'error');
+    });
 
   const changeStatus = (status) => {
     const patch = { status };
@@ -86,6 +89,7 @@ function BookView({ book }) {
       if (book.pageCount) patch.currentPage = book.pageCount;
     }
     update(patch);
+    toast(`${STATUS[status].label} olarak işaretlendi`, 'success');
   };
 
   const remove = async () => {
@@ -98,6 +102,7 @@ function BookView({ book }) {
   const removeNote = async (n) => {
     if (!(await askConfirm('Bu not silinsin mi?', { ok: 'Sil', danger: true }))) return;
     await repo.deleteNote(n.id);
+    toast('Not silindi');
   };
 
   const sortedNotes = [...(notes || [])].sort((a, b) =>
@@ -151,7 +156,8 @@ function BookView({ book }) {
         className="status-seg"
       />
 
-      <div className="tabs" role="tablist">
+      <div className="tabs" role="tablist" style={{ '--idx': ['general', 'notes', 'discover'].indexOf(tab) }}>
+        <span className="tabs-ink" aria-hidden="true" />
         {[
           ['general', 'Genel'],
           ['notes', `Notlar${notes && notes.length ? ` (${notes.length})` : ''}`],
@@ -164,7 +170,7 @@ function BookView({ book }) {
       </div>
 
       {tab === 'general' ? (
-        <>
+        <div className="tab-panel" key="general">
           <section className="card">
             <h3>Okuma</h3>
             {book.status !== 'toRead' ? <Progress book={book} onSave={update} /> : null}
@@ -213,11 +219,11 @@ function BookView({ book }) {
               <p className="desc">{book.description.replace(/<[^>]+>/g, ' ')}</p>
             </details>
           ) : null}
-        </>
+        </div>
       ) : null}
 
       {tab === 'notes' ? (
-        <section>
+        <section className="tab-panel" key="notes">
           <div className="notes-bar">
             <button className="btn primary" onClick={() => setEditor({ note: null })}>
               <Icon name="plus" size={18} /> Not ekle
@@ -235,15 +241,19 @@ function BookView({ book }) {
             </p>
           ) : (
             <ul className="notes">
-              {sortedNotes.map((n) => (
-                <NoteCard key={n.id} note={n} onEdit={() => setEditor({ note: n })} onDelete={() => removeNote(n)} onZoom={() => setZoom(n.photo)} />
+              {sortedNotes.map((n, i) => (
+                <NoteCard i={i} key={n.id} note={n} onEdit={() => setEditor({ note: n })} onDelete={() => removeNote(n)} onZoom={() => setZoom(n.photo)} />
               ))}
             </ul>
           )}
         </section>
       ) : null}
 
-      {tab === 'discover' ? <Discover book={book} /> : null}
+      {tab === 'discover' ? (
+        <div className="tab-panel" key="discover">
+          <Discover book={book} />
+        </div>
+      ) : null}
 
       {editor ? <NoteEditor book={book} note={editor.note} onClose={() => setEditor(null)} /> : null}
       {zoom ? (

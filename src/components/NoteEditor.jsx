@@ -3,6 +3,7 @@ import { BlobImg, Field, Icon, Sheet, toast } from './ui.jsx';
 import { pickImage, resizeImage } from '../services/images.js';
 import { readPage } from '../services/ocr.js';
 import { repo } from '../data/repo.js';
+import { friendlyError } from '../lib/util.js';
 import { DEMO, DEMO_OFF_MSG } from '../env.js';
 
 export default function NoteEditor({ book, note, onClose }) {
@@ -64,9 +65,10 @@ export default function NoteEditor({ book, note, onClose }) {
       if (book.status === 'reading' && pageNum && pageNum > (book.currentPage || 0)) {
         await repo.saveBook({ ...book, currentPage: pageNum });
       }
+      toast(note ? 'Not güncellendi' : 'Not kaydedildi', 'success');
       onClose();
     } catch (e) {
-      setError(e?.message || 'Not kaydedilemedi');
+      setError(friendlyError(e, 'Not kaydedilemedi. Lütfen yeniden deneyin.'));
     } finally {
       setSaving(false);
     }
@@ -77,9 +79,16 @@ export default function NoteEditor({ book, note, onClose }) {
       title={note ? 'Notu düzenle' : 'Yeni not'}
       onClose={onClose}
       footer={
+        <>
+        {error ? (
+          <p className="alert" role="alert">
+            <Icon name="x" size={16} /> {error}
+          </p>
+        ) : null}
         <button className="btn primary wide" onClick={save} disabled={saving || ocr.busy}>
           <Icon name="check" size={18} /> {saving ? 'Kaydediliyor…' : 'Kaydet'}
         </button>
+        </>
       }
     >
       <div className="two">
@@ -96,7 +105,7 @@ export default function NoteEditor({ book, note, onClose }) {
         </Field>
         <div className="note-photo-btns">
           <button className="btn ghost" type="button" onClick={() => addPhoto(true)}>
-            <Icon name="camera" size={18} /> Sayfa fotoğrafı
+            <Icon name="camera" size={18} /> Fotoğraf çek
           </button>
           <button className="btn link" type="button" onClick={() => addPhoto(false)}>
             Galeriden seç
@@ -139,7 +148,6 @@ export default function NoteEditor({ book, note, onClose }) {
       <Field label="Notunuz">
         <textarea rows={6} value={text} onChange={(e) => setText(e.target.value)} placeholder="Bu sayfada dikkatinizi çeken, alıntılamak ya da hatırlamak istediğiniz şey…" />
       </Field>
-      {error ? <p className="error">{error}</p> : null}
     </Sheet>
   );
 }

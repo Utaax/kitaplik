@@ -5,7 +5,7 @@ import { Cover, Field, Icon, Segmented, Spinner, STATUS_KEYS, STATUS, TopBar, Bl
 import { downloadCover, pickImage, resizeImage } from '../services/images.js';
 import { lookupByIsbn } from '../services/lookup.js';
 import { toIsbn13 } from '../lib/isbn.js';
-import { parseTags, todayISO } from '../lib/util.js';
+import { parseTags, todayISO, friendlyError } from '../lib/util.js';
 import { DEMO } from '../env.js';
 
 const textFields = ['title', 'subtitle', 'author', 'publisher', 'publishedDate', 'shelf', 'lentTo', 'description'];
@@ -125,15 +125,17 @@ export default function BookForm({ id }) {
       }
       const saved = await repo.saveBook(book);
       if (isNew && (thenScan || meta.batch)) {
-        toast(`“${saved.title}” kaydedildi`);
+        toast(`“${saved.title}” kaydedildi`, 'success');
         go('/scan?batch=1', { replace: true });
       } else if (isNew) {
+        toast('Kitap kitaplığınıza eklendi', 'success');
         go(`/book/${saved.id}`, { replace: true });
       } else {
+        toast('Değişiklikler kaydedildi', 'success');
         back(`/book/${saved.id}`);
       }
     } catch (e) {
-      setError(e?.message || 'Kaydedilemedi');
+      setError(friendlyError(e, 'Kitap kaydedilemedi. Lütfen yeniden deneyin.'));
     } finally {
       setSaving(false);
     }
@@ -239,9 +241,12 @@ export default function BookForm({ id }) {
         </Field>
       </details>
 
-      {error ? <p className="error">{error}</p> : null}
-
       <div className="sticky-actions">
+        {error ? (
+          <p className="alert" role="alert">
+            <Icon name="x" size={16} /> {error}
+          </p>
+        ) : null}
         <button className="btn primary wide" onClick={() => save(false)} disabled={saving}>
           <Icon name="check" size={18} /> {saving ? 'Kaydediliyor…' : 'Kaydet'}
         </button>

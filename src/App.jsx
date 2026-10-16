@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { go, useRoute } from './router.js';
 import { Icon, ToastHost, ConfirmHost } from './components/ui.jsx';
 import Library from './screens/Library.jsx';
@@ -35,10 +35,25 @@ function TabBar({ active }) {
 export default function App() {
   const { parts, query } = useRoute();
   const [a, b, c] = parts;
+  const routeKey = parts.join('/') || 'home';
+
+  // Geçiş yönü: derine inerken sağdan, geri dönerken soldan, sekmeler arasında solma
+  const TABS = { '': 0, add: 1, settings: 2 };
+  const depth = parts.length;
+  const prev = useRef({ key: routeKey, depth, tab: a in TABS && depth <= 1 ? TABS[a || ''] : null, anim: 'page-fade' });
+  if (prev.current.key !== routeKey) {
+    const tabIdx = (a || '') in TABS && depth <= 1 ? TABS[a || ''] : null;
+    let anim = 'page-fade';
+    if (tabIdx != null && prev.current.tab != null) anim = tabIdx > prev.current.tab ? 'page-push' : 'page-pop';
+    else if (depth > prev.current.depth) anim = 'page-push';
+    else if (depth < prev.current.depth) anim = 'page-pop';
+    prev.current = { key: routeKey, depth, tab: tabIdx, anim };
+  }
+  const anim = prev.current.anim;
 
   useEffect(() => {
     window.scrollTo(0, 0);
-  }, [a, b, c]);
+  }, [routeKey]);
 
   let screen;
   let tab = null;
@@ -74,7 +89,11 @@ export default function App() {
 
   return (
     <div className="app">
-      <main>{screen}</main>
+      <main>
+        <div key={routeKey} className={'page ' + anim}>
+          {screen}
+        </div>
+      </main>
       {tab ? <TabBar active={tab} /> : null}
       <ToastHost />
       <ConfirmHost />

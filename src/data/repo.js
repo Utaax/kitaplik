@@ -66,15 +66,49 @@ async function dataUrlToBlob(url) {
   return res.blob();
 }
 
+// iOS Safari bazı sürümlerde Blob'u IndexedDB'ye yazamıyor
+// ("Error preparing Blob/File data to be stored in object store").
+// Bu yüzden görseller { __img: true, type, buf: ArrayBuffer } biçiminde saklanır
+// ve okunurken yeniden Blob'a çevrilir. Ekranlar her zaman Blob görür.
+const IMG_FIELDS = { books: 'cover', notes: 'photo' };
+
+function blobToArrayBuffer(blob) {
+  if (blob.arrayBuffer) return blob.arrayBuffer();
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result);
+    r.onerror = () => reject(r.error);
+    r.readAsArrayBuffer(blob);
+  });
+}
+
+async function pack(store, rec) {
+  const f = IMG_FIELDS[store];
+  const v = rec[f];
+  if (v && typeof Blob !== 'undefined' && v instanceof Blob) {
+    const buf = await blobToArrayBuffer(v);
+    return { ...rec, [f]: { __img: true, type: v.type || 'image/jpeg', buf } };
+  }
+  return rec;
+}
+
+function unpack(store, rec) {
+  if (!rec) return rec;
+  const f = IMG_FIELDS[store];
+  const v = rec[f];
+  if (v && v.__img && v.buf) return { ...rec, [f]: new Blob([v.buf], { type: v.type }) };
+  return rec;
+}
+
 class LocalRepository {
   async listBooks() {
     const all = await withTx('books', 'readonly', (tx) => reqP(tx.objectStore('books').getAll()));
-    return all.filter((b) => !b.deletedAt);
+    return all.filter((b) => !b.deletedAt).map((b) => unpack('books', b));
   }
 
   async getBook(id) {
     const b = await withTx('books', 'readonly', (tx) => reqP(tx.objectStore('books').get(id)));
-    return b && !b.deletedAt ? b : null;
+    return b && !b.deletedAt ? unpack('books', b) : null;
   }
 
   async findByIsbn(isbn) {
@@ -85,7 +119,8 @@ class LocalRepository {
 
   async saveBook(book) {
     const rec = { ...book, updatedAt: nowISO() };
-    await withTx('books', 'readwrite', (tx) => reqP(tx.objectStore('books').put(rec)));
+    const stored = await pack('books', rec);
+    await withTx('books', 'readwrite', (tx) => reqP(tx.objectStore('books').put(stored)));
     emit();
     return rec;
   }
@@ -106,7 +141,7 @@ class LocalRepository {
 
   async listNotes(bookId) {
     const ns = await withTx('notes', 'readonly', (tx) => reqP(tx.objectStore('notes').index('bookId').getAll(bookId)));
-    return ns.filter((n) => !n.deletedAt);
+    return ns.filter((n) => !n.deletedAt).map((n) => unpack('notes', n));
   }
 
   async countNotes() {
@@ -119,7 +154,8 @@ class LocalRepository {
   async saveNote(note) {
     const now = nowISO();
     const rec = { createdAt: now, deletedAt: null, ...note, id: note.id || uid(), updatedAt: now };
-    await withTx('notes', 'readwrite', (tx) => reqP(tx.objectStore('notes').put(rec)));
+    const stored = await pack('notes', rec);
+    await withTx('notes', 'readwrite', (tx) => reqP(tx.objectStore('notes').put(stored)));
     emit();
     return rec;
   }
@@ -156,8 +192,8 @@ class LocalRepository {
       app: 'kitaplik',
       version: 1,
       exportedAt: nowISO(),
-      books: await Promise.all(books.filter((b) => !b.deletedAt).map((b) => conv(b, 'cover'))),
-      notes: await Promise.all(notes.filter((n) => !n.deletedAt).map((n) => conv(n, 'photo'))),
+      books: await Promise.all(books.filter((b) => !b.deletedAt).map((b) => conv(unpack('books', b), 'cover'))),
+      notes: await Promise.all(notes.filter((n) => !n.deletedAt).map((n) => conv(unpack('notes', n), 'photo'))),
     };
   }
 
@@ -165,10 +201,10 @@ class LocalRepository {
   async importAll(data) {
     if (!data || data.app !== 'kitaplik' || !Array.isArray(data.books)) throw new Error('Geçersiz yedek dosyası');
     const books = await Promise.all(
-      data.books.map(async (b) => ({ ...b, cover: typeof b.cover === 'string' ? await dataUrlToBlob(b.cover) : null }))
+      data.books.map(async (b) => pack('books', { ...b, cover: typeof b.cover === 'string' ? await dataUrlToBlob(b.cover) : null }))
     );
     const notes = await Promise.all(
-      (data.notes || []).map(async (n) => ({ ...n, photo: typeof n.photo === 'string' ? await dataUrlToBlob(n.photo) : null }))
+      (data.notes || []).map(async (n) => pack('notes', { ...n, photo: typeof n.photo === 'string' ? await dataUrlToBlob(n.photo) : null }))
     );
     let addedBooks = 0;
     let addedNotes = 0;

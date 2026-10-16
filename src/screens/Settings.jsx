@@ -4,7 +4,7 @@ import { repo, requestPersistence } from '../data/repo.js';
 import { Icon, Segmented, TopBar, toast, askConfirm } from '../components/ui.jsx';
 import { back } from '../router.js';
 import { saveFile } from '../services/images.js';
-import { csvEscape, todayISO } from '../lib/util.js';
+import { csvEscape, todayISO, friendlyError } from '../lib/util.js';
 import { STATUS } from '../components/ui.jsx';
 
 const fmtMB = (n) => (n / 1048576).toFixed(1) + ' MB';
@@ -29,7 +29,7 @@ export default function Settings() {
       const r = await saveFile(blob, `kitaplik-yedek-${todayISO()}.json`);
       if (r !== 'cancelled') toast(`${data.books.length} kitap ve ${data.notes.length} not yedeklendi`);
     } catch (e) {
-      toast('Yedek alınamadı: ' + (e?.message || ''));
+      toast(friendlyError(e, 'Yedek alınamadı. Lütfen yeniden deneyin.'));
     } finally {
       setBusy(false);
     }

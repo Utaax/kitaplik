@@ -63,16 +63,18 @@ export function BlobImg({ blob, alt = '', className = '', onClick }) {
 
 const COVER_COLORS = ['#2f5d50', '#8c2f39', '#2b4c7e', '#c8643b', '#6b4c9a', '#17717d', '#a67c00', '#3d4451'];
 
-// Kapak: yerel kopya → uzak adres → otomatik üretilen kapak
+// Kapak: yerel kopya → uzak adres → otomatik üretilen kapak (yüklenince yumuşakça belirir)
 export function Cover({ book, className = '' }) {
   const [failed, setFailed] = useState(false);
+  const [loaded, setLoaded] = useState(false);
   const url = useObjectUrl(book.cover);
   useEffect(() => setFailed(false), [book.coverUrl]);
   const src = url || (!failed && book.coverUrl) || '';
+  useEffect(() => setLoaded(false), [src]);
   if (src) {
     return (
-      <div className={'cover ' + className}>
-        <img src={src} alt={book.title} loading="lazy" onError={() => setFailed(true)} />
+      <div className={'cover ' + className + (loaded ? ' is-loaded' : ' is-loading')}>
+        <img src={src} alt={book.title} loading="lazy" onLoad={() => setLoaded(true)} onError={() => setFailed(true)} />
       </div>
     );
   }
@@ -97,9 +99,12 @@ export function StatusBadge({ status }) {
   return <span className={'badge badge-' + status}>{STATUS[status]?.short || ''}</span>;
 }
 
+// Kayan göstergeli seçici
 export function Segmented({ value, onChange, options, className = '' }) {
+  const idx = Math.max(0, options.findIndex((o) => o.value === value));
   return (
-    <div className={'segmented ' + className} role="tablist">
+    <div className={'segmented ' + className} role="tablist" style={{ '--n': options.length, '--idx': idx }}>
+      <span className="seg-thumb" aria-hidden="true" />
       {options.map((o) => (
         <button
           key={o.value}
@@ -107,7 +112,10 @@ export function Segmented({ value, onChange, options, className = '' }) {
           role="tab"
           aria-selected={value === o.value}
           className={value === o.value ? 'on' : ''}
-          onClick={() => onChange(o.value)}
+          onClick={() => {
+            if (o.value !== value) haptic();
+            onChange(o.value);
+          }}
         >
           {o.label}
         </button>
@@ -116,15 +124,27 @@ export function Segmented({ value, onChange, options, className = '' }) {
   );
 }
 
+export function haptic(ms = 8) {
+  try {
+    if (navigator.vibrate) navigator.vibrate(ms);
+  } catch {
+    /* desteklenmiyor */
+  }
+}
+
 export function Stars({ value = 0, onChange, size = 26 }) {
   return (
     <div className="stars" role="radiogroup" aria-label="Puan">
       {[1, 2, 3, 4, 5].map((n) => (
         <button
-          key={n}
+          key={n + (n <= value ? '-on' : '-off')}
           type="button"
           className={'star' + (n <= value ? ' on' : '')}
-          onClick={() => onChange && onChange(value === n ? 0 : n)}
+          style={{ '--d': n * 35 + 'ms' }}
+          onClick={() => {
+            haptic();
+            onChange && onChange(value === n ? 0 : n);
+          }}
           aria-label={`${n} yıldız`}
           disabled={!onChange}
         >
@@ -135,23 +155,37 @@ export function Stars({ value = 0, onChange, size = 26 }) {
   );
 }
 
+// Kapanırken animasyonu bitirmek için gecikmeli kapanış
+function useClosing(onClose, ms = 220) {
+  const [closing, setClosing] = useState(false);
+  const close = () => {
+    if (closing) return;
+    setClosing(true);
+    setTimeout(onClose, window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 0 : ms);
+  };
+  return [closing, close];
+}
+
 /* ---------- Alt sayfa (sheet) ---------- */
 export function Sheet({ title, onClose, children, footer }) {
+  const [closing, close] = useClosing(onClose);
   useEffect(() => {
-    const onKey = (e) => e.key === 'Escape' && onClose();
+    const onKey = (e) => e.key === 'Escape' && close();
     window.addEventListener('keydown', onKey);
     document.body.classList.add('no-scroll');
     return () => {
       window.removeEventListener('keydown', onKey);
       document.body.classList.remove('no-scroll');
     };
-  }, [onClose]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   return (
-    <div className="sheet-backdrop" onClick={onClose}>
+    <div className={'sheet-backdrop' + (closing ? ' closing' : '')} onClick={close}>
       <div className="sheet" role="dialog" aria-modal="true" aria-label={title} onClick={(e) => e.stopPropagation()}>
+        <div className="sheet-grip" aria-hidden="true" />
         <div className="sheet-head">
           <h2>{title}</h2>
-          <button className="icon-btn" onClick={onClose} aria-label="Kapat">
+          <button className="icon-btn" onClick={close} aria-label="Kapat">
             <Icon name="x" />
           </button>
         </div>
@@ -163,17 +197,30 @@ export function Sheet({ title, onClose, children, footer }) {
 }
 
 /* ---------- Bildirimler (toast) ---------- */
-let toastState = { msg: '', id: 0 };
+let toastState = { msg: '', id: 0, kind: 'info', leaving: false };
 const toastSubs = new Set();
-export function toast(msg) {
-  toastState = { msg, id: toastState.id + 1 };
-  toastSubs.forEach((f) => f());
-  setTimeout(() => {
-    if (toastState.msg === msg) {
-      toastState = { msg: '', id: toastState.id + 1 };
-      toastSubs.forEach((f) => f());
-    }
-  }, 3200);
+const emitToast = () => toastSubs.forEach((f) => f());
+let toastTimers = [];
+// kind: 'info' | 'success' | 'error'
+export function toast(msg, kind = 'info') {
+  toastTimers.forEach(clearTimeout);
+  const id = toastState.id + 1;
+  toastState = { msg, id, kind, leaving: false };
+  emitToast();
+  toastTimers = [
+    setTimeout(() => {
+      if (toastState.id === id) {
+        toastState = { ...toastState, leaving: true };
+        emitToast();
+      }
+    }, 2800),
+    setTimeout(() => {
+      if (toastState.id === id) {
+        toastState = { msg: '', id: id + 1, kind: 'info', leaving: false };
+        emitToast();
+      }
+    }, 3100),
+  ];
 }
 export function ToastHost() {
   const t = useSyncExternalStore(
@@ -185,13 +232,28 @@ export function ToastHost() {
   );
   if (!t.msg) return null;
   return (
-    <div className="toast" role="status">
-      {t.msg}
+    <div key={t.id} className={'toast toast-' + t.kind + (t.leaving ? ' leaving' : '')} role="status">
+      {t.kind === 'success' ? <Icon name="check" size={18} /> : t.kind === 'error' ? <Icon name="x" size={18} /> : null}
+      <span>{t.msg}</span>
     </div>
   );
 }
 
 /* ---------- Küçük parçalar ---------- */
+export function SkeletonGrid({ count = 9 }) {
+  return (
+    <div className="grid" aria-busy="true" aria-label="Yükleniyor">
+      {Array.from({ length: count }, (_, i) => (
+        <div key={i} className="grid-item skeleton-item">
+          <div className="cover skeleton" />
+          <span className="skeleton skeleton-line" />
+          <span className="skeleton skeleton-line short" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export function Spinner({ label }) {
   return (
     <div className="spinner-wrap">
@@ -264,15 +326,25 @@ export function ConfirmHost() {
     () => confirmState
   );
   if (!s) return null;
+  return <ConfirmDialog key={s.message} s={s} />;
+}
+
+function ConfirmDialog({ s }) {
+  const [closing, setClosing] = useState(false);
+  const done = (v) => {
+    if (closing) return;
+    setClosing(true);
+    setTimeout(() => closeConfirm(v), 180);
+  };
   return (
-    <div className="sheet-backdrop confirm-backdrop" onClick={() => closeConfirm(false)}>
+    <div className={'sheet-backdrop confirm-backdrop' + (closing ? ' closing' : '')} onClick={() => done(false)}>
       <div className="confirm" role="alertdialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
         <p>{s.message}</p>
         <div className="confirm-actions">
-          <button className="btn ghost" onClick={() => closeConfirm(false)} autoFocus>
+          <button className="btn ghost" onClick={() => done(false)} autoFocus>
             {s.cancel}
           </button>
-          <button className={'btn ' + (s.danger ? 'danger-fill' : 'primary')} onClick={() => closeConfirm(true)}>
+          <button className={'btn ' + (s.danger ? 'danger-fill' : 'primary')} onClick={() => done(true)}>
             {s.ok}
           </button>
         </div>

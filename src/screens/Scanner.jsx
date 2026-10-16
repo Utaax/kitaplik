@@ -4,6 +4,7 @@ import { Icon, Spinner, toast } from '../components/ui.jsx';
 import { createDecoder, decodeFromCanvas } from '../services/scan.js';
 import { blobToCanvas, pickImage } from '../services/images.js';
 import { extractIsbn } from '../lib/isbn.js';
+import { friendlyError } from '../lib/util.js';
 import { startFromIsbn } from '../flows.js';
 import { DEMO } from '../env.js';
 
@@ -30,7 +31,7 @@ export default function Scanner({ query }) {
     } catch (e) {
       handledRef.current = false;
       setState('error');
-      setMsg(e.message || 'Bir hata oluştu');
+      setMsg(friendlyError(e));
     }
   };
 

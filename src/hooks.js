@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { repo, onChange } from './data/repo.js';
+import { friendlyError } from './lib/util.js';
 
 // Veriyi yükler ve depo değiştiğinde otomatik yeniler
 export function useRepoValue(loader, deps = []) {
@@ -50,7 +51,7 @@ export function useAsync() {
     try {
       return await fn();
     } catch (e) {
-      setError(e?.message || 'Bir hata oluştu');
+      setError(friendlyError(e));
       return undefined;
     } finally {
       setLoading(false);

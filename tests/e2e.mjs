@@ -163,6 +163,17 @@ let json = '';
 for await (const c of stream) json += c;
 const backup = JSON.parse(json);
 check('Yedek içeriği', backup.books.length === 2 && backup.notes.length === 1, `${backup.books.length} kitap, ${backup.notes.length} not`);
+const rawCover = await page.evaluate(() => new Promise((res) => {
+  const r = indexedDB.open('kitaplik');
+  r.onsuccess = () => {
+    const g = r.result.transaction('books').objectStore('books').getAll();
+    g.onsuccess = () => {
+      const withCover = g.result.find((b) => b.cover);
+      res(withCover ? { isBlob: withCover.cover instanceof Blob, packed: !!withCover.cover.__img, isBuf: withCover.cover.buf instanceof ArrayBuffer } : null);
+    };
+  };
+}));
+check('Görsel ArrayBuffer olarak saklanıyor (iOS uyumu)', rawCover && rawCover.packed && rawCover.isBuf && !rawCover.isBlob, JSON.stringify(rawCover));
 check('Kapak yedeğe gömüldü', backup.books.some((b) => typeof b.cover === 'string' && b.cover.startsWith('data:image')));
 await page.screenshot({ path: `${OUT}/07-ayarlar.png`, fullPage: true });
 

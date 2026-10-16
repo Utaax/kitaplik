@@ -92,3 +92,15 @@ export function csvEscape(v) {
   const s = v == null ? '' : String(v);
   return /[",\n\r;]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
+
+// Teknik hata iletilerini kullanıcıya anlaşılır Türkçeye çevirir
+export function friendlyError(e, fallback = 'Bir hata oluştu, lütfen yeniden deneyin.') {
+  const name = e?.name || '';
+  const msg = String(e?.message || e || '');
+  if (name === 'QuotaExceededError' || /quota/i.test(msg)) return 'Telefonda yer kalmadı. Bazı fotoğrafları silip yeniden deneyin.';
+  if (/Blob|File data|object store/i.test(msg)) return 'Fotoğraf kaydedilemedi. Uygulamayı kapatıp açın ve yeniden deneyin.';
+  if (name === 'InvalidStateError' || /database|IndexedDB/i.test(msg)) return 'Kayıt yapılamadı: tarayıcı veri saklamaya izin vermiyor (gizli pencere olabilir).';
+  if (/network|fetch|Failed to load/i.test(msg)) return 'İnternet bağlantısı kurulamadı. Bağlantınızı kontrol edip yeniden deneyin.';
+  if (/[çğışöüÇĞİŞÖÜ]/.test(msg)) return msg; // zaten Türkçe
+  return fallback;
+}
