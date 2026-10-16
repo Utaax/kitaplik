@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useBooks } from '../hooks.js';
 import { useSettings, updateSettings } from '../settings.js';
 import { go } from '../router.js';
@@ -24,7 +24,7 @@ function sortBooks(list, sort) {
   return copy;
 }
 
-export default function Library() {
+export default function Library({ highlight }) {
   const books = useBooks();
   const { view, sort } = useSettings();
   const [q, setQ] = useState('');
@@ -55,6 +55,12 @@ export default function Library() {
     }
     return sortBooks(list, sort);
   }, [books, q, filter, sort]);
+
+  useEffect(() => {
+    if (!highlight || !books) return;
+    const el = document.querySelector(`[data-id="${highlight}"]`);
+    if (el) setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'center' }), 350);
+  }, [highlight, books]);
 
   if (books === null) {
     return (
@@ -163,7 +169,7 @@ export default function Library() {
       ) : view === 'grid' ? (
         <div className="grid">
           {shown.map((b, i) => (
-            <button key={b.id} className="grid-item rise" style={{ '--i': Math.min(i, 14) }} onClick={() => go(`/book/${b.id}`)}>
+            <button key={b.id} data-id={b.id} className={'grid-item rise' + (b.id === highlight ? ' just-added' : '')} style={{ '--i': Math.min(i, 14) }} onClick={() => go(`/book/${b.id}`)}>
               <Cover book={b} />
               <span className="gi-title">{b.title}</span>
               <span className="gi-author">{b.author}</span>
@@ -174,7 +180,7 @@ export default function Library() {
       ) : (
         <ul className="list">
           {shown.map((b, i) => (
-            <li key={b.id} className="rise" style={{ '--i': Math.min(i, 14) }}>
+            <li key={b.id} data-id={b.id} className={'rise' + (b.id === highlight ? ' just-added' : '')} style={{ '--i': Math.min(i, 14) }}>
               <button className="list-item" onClick={() => go(`/book/${b.id}`)}>
                 <Cover book={b} className="small" />
                 <span className="li-text">

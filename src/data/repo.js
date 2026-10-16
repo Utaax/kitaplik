@@ -121,6 +121,11 @@ class LocalRepository {
     const rec = { ...book, updatedAt: nowISO() };
     const stored = await pack('books', rec);
     await withTx('books', 'readwrite', (tx) => reqP(tx.objectStore('books').put(stored)));
+    // Bazı iOS sürümlerinde yazma sessizce başarısız olabiliyor: geri okuyup doğrula
+    const check = await withTx('books', 'readonly', (tx) => reqP(tx.objectStore('books').get(rec.id)));
+    if (!check || check.updatedAt !== rec.updatedAt) {
+      throw new Error('Kitap cihaza yazılamadı. Uygulamayı kapatıp açın ve yeniden deneyin.');
+    }
     emit();
     return rec;
   }

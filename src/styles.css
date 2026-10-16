@@ -1601,3 +1601,107 @@ details.card > :not(summary) {
 @keyframes toastOut {
   to { opacity: 0; transform: translate(-50%, -16px) scale(0.96); }
 }
+
+/* ===== "Kaydedildi" animasyonu ===== */
+.burst {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  background: rgba(0, 0, 0, 0.18);
+  animation: burstBg 1500ms ease forwards;
+}
+.burst-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 200px;
+  max-width: 80vw;
+  padding: 26px 24px 20px;
+  border-radius: 24px;
+  background: var(--surface);
+  color: var(--text);
+  text-align: center;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.28);
+  animation: burstCard 1500ms var(--ease-spring) forwards;
+}
+.burst-card b {
+  font-family: var(--font-head);
+  font-size: 1.35rem;
+}
+.burst-card span {
+  font-size: 0.88rem;
+  color: var(--muted);
+}
+.burst-check {
+  width: 72px;
+  height: 72px;
+  margin-bottom: 4px;
+}
+.burst-circle {
+  stroke: var(--accent);
+  stroke-width: 3;
+  stroke-dasharray: 151;
+  stroke-dashoffset: 151;
+  animation: drawStroke 520ms var(--ease-out) 80ms forwards;
+}
+.burst-tick {
+  stroke: var(--accent);
+  stroke-width: 4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 40;
+  stroke-dashoffset: 40;
+  animation: drawStroke 360ms var(--ease-out) 480ms forwards;
+}
+.burst-dot {
+  position: absolute;
+  top: 62px;
+  left: 50%;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  opacity: 0;
+  animation: confetti 820ms var(--ease-out) 520ms forwards;
+}
+.burst-dot.d2 { background: #e9c46a; --dx: 58px; --dy: -44px; }
+.burst-dot.d1 { --dx: -60px; --dy: -40px; }
+.burst-dot.d3 { background: #e76f51; --dx: 70px; --dy: 10px; }
+.burst-dot.d4 { background: #e9c46a; --dx: -72px; --dy: 14px; }
+.burst-dot.d5 { --dx: 34px; --dy: -70px; }
+.burst-dot.d6 { background: #e76f51; --dx: -30px; --dy: -72px; }
+@keyframes drawStroke {
+  to { stroke-dashoffset: 0; }
+}
+@keyframes confetti {
+  0% { opacity: 1; transform: translate(-50%, 0) scale(0.4); }
+  70% { opacity: 1; }
+  100% { opacity: 0; transform: translate(calc(-50% + var(--dx, 0px)), var(--dy, 0px)) scale(1); }
+}
+@keyframes burstCard {
+  0% { opacity: 0; transform: scale(0.7); }
+  14% { opacity: 1; transform: scale(1); }
+  82% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(0.94); }
+}
+@keyframes burstBg {
+  0% { opacity: 0; }
+  12%, 82% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* Kitaplıkta yeni eklenen kitap: halka ile vurgula */
+.just-added .cover {
+  animation: justAdded 1.6s var(--ease-out) 900ms 2 backwards;
+}
+@keyframes justAdded {
+  0% { box-shadow: 0 0 0 0 var(--accent); transform: scale(1); }
+  30% { box-shadow: 0 0 0 6px var(--accent); transform: scale(1.04); }
+  100% { box-shadow: 0 0 0 14px transparent; transform: scale(1); }
+}

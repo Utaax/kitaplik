@@ -352,3 +352,44 @@ function ConfirmDialog({ s }) {
     </div>
   );
 }
+
+/* ---------- "Kaydedildi" kutlama animasyonu ---------- */
+let burstState = null;
+const burstSubs = new Set();
+export function celebrate(title = 'Kaydedildi', subtitle = '') {
+  burstState = { title, subtitle, id: Date.now() };
+  burstSubs.forEach((f) => f());
+  haptic(20);
+  setTimeout(() => {
+    burstState = null;
+    burstSubs.forEach((f) => f());
+  }, 1500);
+}
+export function SavedBurst() {
+  const s = useSyncExternalStore(
+    (cb) => {
+      burstSubs.add(cb);
+      return () => burstSubs.delete(cb);
+    },
+    () => burstState
+  );
+  if (!s) return null;
+  return (
+    <div key={s.id} className="burst" role="status" aria-live="polite">
+      <div className="burst-card">
+        <svg className="burst-check" viewBox="0 0 52 52" aria-hidden="true">
+          <circle className="burst-circle" cx="26" cy="26" r="24" fill="none" />
+          <path className="burst-tick" fill="none" d="M15 27 l7 7 l15 -16" />
+        </svg>
+        <b>{s.title}</b>
+        {s.subtitle ? <span>{s.subtitle}</span> : null}
+        <i className="burst-dot d1" />
+        <i className="burst-dot d2" />
+        <i className="burst-dot d3" />
+        <i className="burst-dot d4" />
+        <i className="burst-dot d5" />
+        <i className="burst-dot d6" />
+      </div>
+    </div>
+  );
+}

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { back, go, takeDraft } from '../router.js';
 import { repo, newBook } from '../data/repo.js';
-import { Cover, Field, Icon, Segmented, Spinner, STATUS_KEYS, STATUS, TopBar, BlobImg, toast } from '../components/ui.jsx';
+import { Cover, Field, Icon, Segmented, Spinner, STATUS_KEYS, STATUS, TopBar, BlobImg, toast , celebrate } from '../components/ui.jsx';
 import { downloadCover, pickImage, resizeImage } from '../services/images.js';
 import { lookupByIsbn } from '../services/lookup.js';
 import { toIsbn13 } from '../lib/isbn.js';
@@ -125,13 +125,13 @@ export default function BookForm({ id }) {
       }
       const saved = await repo.saveBook(book);
       if (isNew && (thenScan || meta.batch)) {
-        toast(`“${saved.title}” kaydedildi`, 'success');
+        celebrate('Kaydedildi', 'Sıradaki kitaba geçiliyor');
         go('/scan?batch=1', { replace: true });
       } else if (isNew) {
-        toast('Kitap kitaplığınıza eklendi', 'success');
-        go(`/book/${saved.id}`, { replace: true });
+        celebrate('Kaydedildi', `“${saved.title}” kitaplığınıza eklendi`);
+        go(`/?yeni=${saved.id}`, { replace: true });
       } else {
-        toast('Değişiklikler kaydedildi', 'success');
+        celebrate('Kaydedildi', 'Değişiklikler saklandı');
         back(`/book/${saved.id}`);
       }
     } catch (e) {

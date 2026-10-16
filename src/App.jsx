@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { go, useRoute } from './router.js';
-import { Icon, ToastHost, ConfirmHost } from './components/ui.jsx';
+import { Icon, ToastHost, ConfirmHost, SavedBurst } from './components/ui.jsx';
 import Library from './screens/Library.jsx';
 import Add from './screens/Add.jsx';
 import Scanner from './screens/Scanner.jsx';
@@ -58,7 +58,7 @@ export default function App() {
   let screen;
   let tab = null;
   if (!a) {
-    screen = <Library />;
+    screen = <Library highlight={query.yeni} />;
     tab = 'library';
   } else if (a === 'add') {
     screen = <Add />;
@@ -69,6 +69,7 @@ export default function App() {
         <Scanner query={query} />
         <ToastHost />
         <ConfirmHost />
+        <SavedBurst />
       </>
     );
   } else if (a === 'scan-cover') {
@@ -97,6 +98,7 @@ export default function App() {
       {tab ? <TabBar active={tab} /> : null}
       <ToastHost />
       <ConfirmHost />
+      <SavedBurst />
     </div>
   );
 }

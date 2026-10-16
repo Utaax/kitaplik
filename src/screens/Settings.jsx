@@ -14,11 +14,13 @@ export default function Settings() {
   const [usage, setUsage] = useState(null);
   const [persisted, setPersisted] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [bookCount, setBookCount] = useState(null);
   const standalone = window.matchMedia?.('(display-mode: standalone)').matches || window.navigator.standalone;
 
   useEffect(() => {
     navigator.storage?.estimate?.().then((e) => setUsage(e)).catch(() => {});
     navigator.storage?.persisted?.().then(setPersisted).catch(() => {});
+    repo.listBooks().then((b) => setBookCount(b.length)).catch(() => setBookCount(-1));
   }, []);
 
   const exportJson = async () => {
@@ -161,7 +163,11 @@ export default function Settings() {
             <Icon name="list" size={18} /> Tablo olarak dışa aktar (CSV)
           </button>
         </div>
-        <p className="muted small">
+        <p className="muted small diag">
+          {bookCount === -1 ? 'Kayıtlar okunamadı' : bookCount != null ? `Bu cihazda kayıtlı: ${bookCount} kitap` : ''}
+          {' · '}
+          {standalone ? 'Ana ekran uygulaması' : 'Tarayıcı (Safari/Chrome)'}
+          <br />
           {usage ? `Kullanılan alan: ${fmtMB(usage.usage || 0)}` : ''}
           {persisted === false ? ' · Kalıcı depolama kapalı' : persisted ? ' · Kalıcı depolama açık' : ''}
         </p>
