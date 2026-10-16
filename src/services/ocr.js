@@ -102,18 +102,42 @@ export async function readPage(blob, onProgress) {
   return { page: page ? page.page : null, text: r.text };
 }
 
-// Kapak: dağınık metin modu + kontrast; yeterli kelime çıkmazsa ters renkle ikinci deneme
+function rotateCanvas(src, deg) {
+  const c = document.createElement('canvas');
+  const quarter = deg % 180 !== 0;
+  c.width = quarter ? src.height : src.width;
+  c.height = quarter ? src.width : src.height;
+  const ctx = c.getContext('2d');
+  ctx.translate(c.width / 2, c.height / 2);
+  ctx.rotate((deg * Math.PI) / 180);
+  ctx.drawImage(src, -src.width / 2, -src.height / 2);
+  return c;
+}
+
+const strongCount = (ws) => ws.filter((w) => w.confidence >= 60 && w.text.replace(/[^\p{L}]/gu, '').length >= 3).length;
+
+// Kapak: dağınık metin modu + kontrast. Yeterli kelime çıkmazsa sırayla:
+// dikey yazılar için 90° ve 270° döndürerek, sonra koyu zemin için ters renkle yeniden okur.
+// Her denemede okunan güvenilir kelimeler birleştirilir.
 export async function readCover(blob, onProgress) {
-  const canvas = await blobToCanvas(blob, 1800);
-  const strong = (ws) => ws.filter((w) => w.confidence >= 60 && w.text.replace(/[^\p{L}]/gu, '').length >= 3).length;
-  const first = await recognize(blob, (p, t) => onProgress && onProgress(p * 0.5, t), { psm: '11', canvas, enhance: true });
-  let lines = first.lines;
-  let words = first.words;
-  if (strong(words) < 4) {
-    if (onProgress) onProgress(0.5, 'Koyu zemin için yeniden okunuyor…');
-    const second = await recognize(blob, (p, t) => onProgress && onProgress(0.5 + p * 0.5, t), { psm: '11', canvas, invert: true });
-    lines = lines.concat(second.lines);
-    words = words.concat(second.words);
+  const canvas = await blobToCanvas(blob, 1600);
+  const passes = [
+    { label: 'Kapak okunuyor…', opts: { canvas, enhance: true } },
+    { label: 'Dikey yazılar için çevrilip okunuyor…', opts: { canvas: rotateCanvas(canvas, 90), enhance: true } },
+    { label: 'Dikey yazılar için çevrilip okunuyor…', opts: { canvas: rotateCanvas(canvas, 270), enhance: true } },
+    { label: 'Koyu zemin için yeniden okunuyor…', opts: { canvas, invert: true } },
+  ];
+  let lines = [];
+  let words = [];
+  for (let i = 0; i < passes.length; i++) {
+    const { label, opts } = passes[i];
+    const r = await recognize(blob, (p) => onProgress && onProgress((i + p) / passes.length, label), { psm: '11', ...opts });
+    if (i === 0 || strongCount(r.words) >= 1) {
+      lines = lines.concat(r.lines);
+      words = words.concat(r.words);
+    }
+    // İlk denemede yeterince kelime varsa ya da dönüşlerle anlamlı kelime toplandıysa dur
+    if (strongCount(words) >= 5 && (i === 0 || i >= 2)) break;
   }
   const guess = guessCover(lines);
   return { ...guess, words, text: lines.map((l) => l.text).join('\n') };

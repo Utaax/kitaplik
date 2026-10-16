@@ -20,7 +20,8 @@ test('OCR hataları düzeltilir ve anahtar kelimeler büyük yazıdan önce geli
   assert.equal(cleanToken('MAD0NNA'), 'madonna');
   const kw = extractKeywords(words);
   const ws = kw.map((k) => k.w);
-  assert.deepEqual(ws.slice(0, 3).sort(), ['kurk', 'madonna', 'mantolv'].sort());
+  assert.equal(ws[0], 'kurk');
+  for (const w of ['madonna', 'mantolv']) assert.ok(ws.slice(0, 4).includes(w), `${w} ilk dörtte olmalı: ${ws}`);
   assert.ok(!ws.includes('yayinlari'), 'yayınevi eki durdurma sözcüğü olmalı');
   assert.ok(ws.includes('sabahattin'));
 });

@@ -28,11 +28,13 @@ export function extractKeywords(words, max = 12) {
   const best = new Map();
   for (const x of words) {
     const conf = Number(x.confidence ?? 60);
-    if (conf < 35) continue;
+    if (conf < 50) continue;
     for (const w of cleanToken(x.text).split(' ')) {
       if (w.length < 3 || STOP.has(w) || /^\d+$/.test(w)) continue;
-      if (!/[aeiou]/.test(w) && w.length < 5) continue; // ünlüsüz kısa parçalar çoğunlukla gürültüdür
-      const weight = (0.35 + 0.65 * Math.min(1, (x.h || 1) / maxH)) * (0.5 + 0.5 * Math.min(1, conf / 90));
+      if (w.length <= 4 && conf < 75) continue; // kısa ve düşük güvenli parçalar çoğunlukla desen/gürültüdür
+      if (!/[aeiou]/.test(w) && w.length < 5) continue; // ünlüsüz kısa parçalar da öyle
+      const c = Math.min(1, conf / 95);
+      const weight = (0.35 + 0.65 * Math.min(1, (x.h || 1) / maxH)) * (0.4 + 0.6 * c);
       if (!best.has(w) || best.get(w) < weight) best.set(w, weight);
     }
   }
@@ -80,13 +82,19 @@ export function scoreCandidate(keywords, cand) {
   const all = tokensOf([cand.title, cand.subtitle, cand.author, cand.publisher].join(' '));
   const top = keywords.slice(0, 8);
   const total = top.reduce((s, k) => s + k.weight, 0);
-  const hit = top.reduce((s, k) => s + k.weight * tokenSimilarity(k.w, all), 0);
+  let matched = 0;
+  const hit = top.reduce((s, k) => {
+    const sim = tokenSimilarity(k.w, all);
+    if (sim >= 0.7) matched++;
+    return s + k.weight * sim;
+  }, 0);
   // Kitap adının kelimeleri kapakta okunduysa güçlü işaret
   const titleWords = tokensOf(cand.title).filter((w) => w.length >= 3 && !STOP.has(w));
   const kw = keywords.map((k) => k.w);
   const covered = titleWords.filter((t) => tokenSimilarity(t, kw) >= 0.7).length;
   const coverage = titleWords.length ? covered / titleWords.length : 0;
-  return hit / total + 0.5 * coverage;
+  // Ağırlıklı örtüşme + başlık kapsaması + eşleşen farklı kelime sayısı (fazla kelime eşleşen aday öne çıkar)
+  return hit / total + 0.3 * coverage + 0.05 * Math.min(matched, 6);
 }
 
 // Arama sorguları: en büyük kelimeler (genelde başlık), tahmin edilen başlık+yazar, daha geniş kelime kümesi

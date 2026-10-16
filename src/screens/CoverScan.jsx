@@ -23,6 +23,7 @@ export default function CoverScan() {
   const [lines, setLines] = useState([]);
   const [vals, setVals] = useState({ title: '', author: '', publisher: '', subtitle: '', isbn: '' });
   const [readBy, setReadBy] = useState(''); // hangi yöntemle okundu
+  const [ocrWords, setOcrWords] = useState([]);
   const ai = useAi();
   const [active, setActive] = useState('title');
   const [progress, setProgress] = useState(null); // { p, text }
@@ -53,6 +54,7 @@ export default function CoverScan() {
   const runLocalOcr = async (blob) => {
     const r = await readCover(blob, (p, text) => setProgress({ p, text }));
     setLines(r.lines);
+    setOcrWords(r.words || []);
     const v = { title: r.title || '', author: r.author || '', publisher: '', subtitle: '', isbn: '' };
     setVals(v);
     setReadBy('Telefonda okundu (ücretsiz)');
@@ -110,13 +112,17 @@ export default function CoverScan() {
   const addChip = (text) =>
     setVals((v) => ({ ...v, [active]: (v[active] ? v[active] + ' ' : '') + text }));
 
+  // Elle düzeltilen alanlar en güçlü ipucu; kapakta okunan kelimeler de eklenir
   const search = () =>
     run(async () => {
-      const query = [vals.title, vals.author].filter(Boolean).join(' ') || lines.slice(0, 3).join(' ');
-      if (!query.trim()) throw new Error('Aramak için en az bir sözcük girin.');
-      const list = await searchBooks(query);
-      if (!list.length) throw new Error('Eşleşen kitap bulunamadı. Sözcükleri düzeltip yeniden deneyin ya da bu bilgilerle devam edin.');
-      setResults(list);
+      const typed = [vals.title, vals.author, vals.publisher]
+        .filter(Boolean)
+        .flatMap((t, i) => String(t).split(/\s+/).map((w) => ({ text: w, confidence: 95, h: i === 0 ? 300 : 200 })));
+      const words = [...typed, ...ocrWords];
+      if (!words.length) throw new Error('Aramak için en az bir sözcük girin.');
+      const { ranked } = await matchCover(words, { title: vals.title, author: vals.author });
+      if (!ranked.length) throw new Error('Eşleşen kitap bulunamadı. Kitap adını ya da yazarı düzeltip yeniden deneyin, ya da bu bilgilerle devam edin.');
+      setResults(ranked);
     });
 
   return (
